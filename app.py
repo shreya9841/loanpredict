@@ -24,10 +24,12 @@ education_map = {"Graduate": 1, "Not Graduate": 0}
 self_employed_map = {"Yes": 1, "No": 0}
 property_area_map = {"Urban": 2, "Semiurban": 1, "Rural": 0}
 
+
 # Home
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 # Sign up
 @app.route("/signup", methods=["GET", "POST"])
@@ -49,6 +51,7 @@ def signup():
             conn.close()
     return render_template("signup.html")
 
+
 # Login
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -69,11 +72,13 @@ def login():
             return render_template("login.html", error="Invalid username or password.")
     return render_template("login.html")
 
+
 # Logout
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect(url_for("index"))
+
 
 # Loan prediction
 @app.route("/predict", methods=["GET", "POST"])
@@ -97,35 +102,27 @@ def predict():
             property_area = request.form.get("Property_Area")
 
             # Encode inputs
-            gender_enc = gender_map.get(gender, 0)
-            married_enc = married_map.get(married, 0)
-            dependents_enc = dependents_map.get(dependents, 0)
-            education_enc = education_map.get(education, 0)
-            self_employed_enc = self_employed_map.get(self_employed, 0)
-            property_area_enc = property_area_map.get(property_area, 0)
-
             input_dict = {
-                'Gender': gender_enc,
-                'Married': married_enc,
-                'Dependents': dependents_enc,
-                'Education': education_enc,
-                'Self_Employed': self_employed_enc,
+                'Gender': gender_map.get(gender, 0),
+                'Married': married_map.get(married, 0),
+                'Dependents': dependents_map.get(dependents, 0),
+                'Education': education_map.get(education, 0),
+                'Self_Employed': self_employed_map.get(self_employed, 0),
                 'ApplicantIncome': applicant_income,
                 'CoapplicantIncome': coapplicant_income,
                 'LoanAmount': loan_amount,
                 'Loan_Amount_Term': loan_amount_term,
                 'Credit_History': credit_history,
-                'Property_Area': property_area_enc
+                'Property_Area': property_area_map.get(property_area, 0)
             }
 
             input_data = np.array([[input_dict[feature] for feature in feature_names]])
-
             prediction = model.predict(input_data)[0]
-            pred_label = "Y" if prediction == 1 else "N"
+            pred_label = "Approved ✅" if prediction == 1 else "Rejected ❌"
 
-            return render_template("form.html", prediction=pred_label,
-                                   input_data=input_data.tolist(),
-                                   raw_prediction=prediction)
+            return render_template("result.html",
+                                   prediction=pred_label,
+                                   input_data=input_dict)
 
         except Exception as e:
             return render_template("form.html", error=str(e))

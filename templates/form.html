@@ -14,7 +14,7 @@
         <li><a href="/">Home</a></li>
         <li><a href="/">Info</a></li>
         <li><a href="/">Bank</a></li>
-        <li><a href="/">Predict</a></li>
+        <li><a href="/predict">Predict</a></li>
         <li><a href="/">Contact</a></li>
         <li><a href="/logout" id="login-logout-link">Logout</a></li>
       </ul>
@@ -137,69 +137,14 @@
         </div>
 
         <button type="submit" class="submit-btn" id="submitBtn">
-          <span class="loading"><div class="spinner"></div></span>
           Predict Loan Status
         </button>
       </div>
     </form>
 
-    <div id="predictionResult" style="display: none;"></div>
-    <div id="errorResult" style="display: none;"></div>
+    {% if error %}
+      <div class="error-message">{{ error }}</div>
+    {% endif %}
   </div>
-
-  <script>
-    const form = document.getElementById('loanForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const predictionResult = document.getElementById('predictionResult');
-    const errorResult = document.getElementById('errorResult');
-
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-
-      submitBtn.classList.add('loading');
-      predictionResult.style.display = 'none';
-      errorResult.style.display = 'none';
-
-      setTimeout(() => {
-        const creditHistory = document.getElementById('Credit_History').value;
-        const applicantIncome = parseInt(document.getElementById('ApplicantIncome').value);
-
-        // Convert loan amount from NPR to thousands
-        const loanAmountInput = parseInt(document.getElementById('LoanAmount').value);
-        const loanAmount = Math.round(loanAmountInput / 1000);
-
-        // Convert loan term from years to months
-        const loanTermYears = parseInt(document.getElementById('Loan_Amount_Term').value);
-        const loanTermMonths = loanTermYears * 12;
-
-        // Mock logic for demo
-        let prediction = 'N';
-        if (creditHistory === '1' && applicantIncome > 30000 && loanAmount < applicantIncome * 10 && loanTermMonths >= 60) {
-          prediction = 'Y';
-        }
-
-        showResult(prediction);
-        submitBtn.classList.remove('loading');
-      }, 2000);
-    });
-
-    function showResult(prediction) {
-      if (prediction === 'Y') {
-        predictionResult.className = 'prediction-result prediction-approved';
-        predictionResult.innerHTML = '✅ Loan Approved! Congratulations on your loan approval.';
-      } else {
-        predictionResult.className = 'prediction-result prediction-rejected';
-        predictionResult.innerHTML = '❌ Loan Rejected. Please review your application and try again.';
-      }
-      predictionResult.style.display = 'block';
-    }
-
-    const numberInputs = document.querySelectorAll('input[type="number"]');
-    numberInputs.forEach(input => {
-      input.addEventListener('input', function () {
-        if (this.value < 0) this.value = 0;
-      });
-    });
-  </script>
 </body>
 </html>

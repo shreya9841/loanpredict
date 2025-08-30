@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prediction Result</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='form.css') }}">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      padding: 20px;
+    }
+    .result-box {
+      text-align: center;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    }
+    .approved {
+      background: #e6f9ec;
+      border: 2px solid #4CAF50;
+      color: #2e7d32;
+    }
+    .rejected {
+      background: #fdecea;
+      border: 2px solid #F44336;
+      color: #c62828;
+    }
+    .chart-container {
+      width: 300px;
+      margin: 30px auto;
+    }
+    .back-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+    }
+    .back-btn:hover {
+      background-color: #e0e0e0;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Back Button at Top -->
+    <a href="/predict" class="back-btn">←</a>
+
+    <h1>Loan Prediction Result</h1>
+
+    <div class="result-box {% if 'Approved' in prediction %}approved{% else %}rejected{% endif %}">
+      <h2>{{ prediction }}</h2>
+      {% if 'Approved' in prediction %}
+        <p>Congratulations! Your loan is likely to be approved.</p>
+      {% else %}
+        <p>Unfortunately, your loan may not be approved. Please review your details.</p>
+      {% endif %}
+    </div>
+
+    <div class="chart-container">
+      <canvas id="resultChart"></canvas>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="/predict" class="submit-btn">Try Again</a>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('resultChart');
+
+    const isApproved = "{{ 'Approved' in prediction }}" === "True";
+
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Approval Likelihood', ''],
+        datasets: [{
+          data: [isApproved ? 100 : 20, isApproved ? 0 : 80],
+          backgroundColor: [isApproved ? '#4CAF50' : '#F44336', '#e0e0e0'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        circumference: 180,
+        rotation: -90,
+        cutout: '70%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

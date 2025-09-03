@@ -4,9 +4,20 @@ import numpy as np
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from model import TreeNode, DecisionTree, RandomForest  # your custom model
+from flask_mysqldb import MySQL   # <-- import here
+
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"
+
+from flask_mysqldb import MySQL
+
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''  
+app.config['MYSQL_DB'] = 'loan_system'
+
+mysql = MySQL(app)
 
 # Load ML model
 with open("loan_model.pkl", "rb") as f:
@@ -39,17 +50,17 @@ def signup():
         password = request.form.get("password")
         hashed_pw = generate_password_hash(password)
 
-        conn = sqlite3.connect("users.db")
-        c = conn.cursor()
+        cur = mysql.connection.cursor()
         try:
-            c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
-            conn.commit()
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed_pw))
+            mysql.connection.commit()
             return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
+        except Exception:
             return render_template("signup.html", error="Username already exists.")
         finally:
-            conn.close()
+            cur.close()
     return render_template("signup.html")
+
 
 
 # Login
@@ -59,18 +70,18 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        conn = sqlite3.connect("users.db")
-        c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE username = ?", (username,))
-        user = c.fetchone()
-        conn.close()
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+        cur.close()
 
-        if user and check_password_hash(user[2], password):
+        if user and check_password_hash(user[2], password):  # user[2] = password column
             session['user'] = username
             return redirect(url_for("index"))
         else:
             return render_template("login.html", error="Invalid username or password.")
     return render_template("login.html")
+
 
 
 # Logout

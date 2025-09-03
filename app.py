@@ -3,31 +3,30 @@ import pickle
 import numpy as np
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
-from model import TreeNode, DecisionTree, RandomForest  # your custom model
-from flask_mysqldb import MySQL   # <-- import here
+from flask_mysqldb import MySQL
 
+# Import your custom model classes
+from model import TreeNode, DecisionTree, RandomForest  
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"
 
-from flask_mysqldb import MySQL
-
+# MySQL configuration
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''  
 app.config['MYSQL_DB'] = 'loan_system'
-
 mysql = MySQL(app)
 
-# Load ML model
+# Load trained ML model
 with open("loan_model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# Load feature names
+# Load feature names (to preserve column order)
 with open("features.pkl", "rb") as f:
     feature_names = pickle.load(f)
 
-# Encoding maps
+# Encoding maps (must match training preprocessing!)
 gender_map = {"Male": 1, "Female": 0}
 married_map = {"Yes": 1, "No": 0}
 dependents_map = {"0": 0, "1": 1, "2": 2, "3+": 3}
@@ -36,13 +35,14 @@ self_employed_map = {"Yes": 1, "No": 0}
 property_area_map = {"Urban": 2, "Semiurban": 1, "Rural": 0}
 
 
-# Home
+# ---------------- ROUTES ---------------- #
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# Sign up
+# -------- SIGN UP --------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -62,8 +62,7 @@ def signup():
     return render_template("signup.html")
 
 
-
-# Login
+# -------- LOGIN --------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -75,7 +74,7 @@ def login():
         user = cur.fetchone()
         cur.close()
 
-        if user and check_password_hash(user[2], password):  # user[2] = password column
+        if user and check_password_hash(user[2], password):  # assuming user[2] = password column
             session['user'] = username
             return redirect(url_for("index"))
         else:
@@ -83,15 +82,14 @@ def login():
     return render_template("login.html")
 
 
-
-# Logout
+# -------- LOGOUT --------
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect(url_for("index"))
 
 
-# Loan prediction
+# -------- LOAN PREDICTION --------
 @app.route("/predict", methods=["GET", "POST"])
 def predict():
     if "user" not in session:
@@ -99,47 +97,43 @@ def predict():
 
     if request.method == "POST":
         try:
-            # Get form data
-            gender = request.form.get("Gender")
-            married = request.form.get("Married")
-            dependents = request.form.get("Dependents")
-            education = request.form.get("Education")
-            self_employed = request.form.get("Self_Employed")
-            applicant_income = float(request.form.get("ApplicantIncome"))
-            coapplicant_income = float(request.form.get("CoapplicantIncome"))
-            loan_amount = float(request.form.get("LoanAmount"))
-            loan_amount_term = float(request.form.get("Loan_Amount_Term"))
-            credit_history = float(request.form.get("Credit_History"))
-            property_area = request.form.get("Property_Area")
-
-            # Encode inputs
+            # Collect form data
             input_dict = {
-                'Gender': gender_map.get(gender, 0),
-                'Married': married_map.get(married, 0),
-                'Dependents': dependents_map.get(dependents, 0),
-                'Education': education_map.get(education, 0),
-                'Self_Employed': self_employed_map.get(self_employed, 0),
-                'ApplicantIncome': applicant_income,
-                'CoapplicantIncome': coapplicant_income,
-                'LoanAmount': loan_amount,
-                'Loan_Amount_Term': loan_amount_term,
-                'Credit_History': credit_history,
-                'Property_Area': property_area_map.get(property_area, 0)
+                'Gender': gender_map.get(request.form.get("Gender"), 0),
+                'Married': married_map.get(request.form.get("Married"), 0),
+                'Dependents': dependents_map.get(request.form.get("Dependents"), 0),
+                'Education': education_map.get(request.form.get("Education"), 0),
+                'Self_Employed': self_employed_map.get(request.form.get("Self_Employed"), 0),
+                'ApplicantIncome': float(request.form.get("ApplicantIncome")),
+                'CoapplicantIncome': float(request.form.get("CoapplicantIncome")),
+                'LoanAmount': float(request.form.get("LoanAmount")),
+                'Loan_Amount_Term': float(request.form.get("Loan_Amount_Term")),
+                'Credit_History': float(request.form.get("Credit_History")),
+                'Property_Area': property_area_map.get(request.form.get("Property_Area"), 0)
             }
 
+            # Arrange features in training order
             input_data = np.array([[input_dict[feature] for feature in feature_names]])
+
+            # Debug: print to console
+            print("Feature order from training:", feature_names)
+            print("Form input values:", input_dict)
+            print("Final input row:", input_data)
+
+            # Make prediction
             prediction = model.predict(input_data)[0]
+
+            # ⚠️ Ensure correct label meaning
             pred_label = "Approved ✅" if prediction == 1 else "Rejected ❌"
 
-            return render_template("result.html",
-                                   prediction=pred_label,
-                                   input_data=input_dict)
+            return render_template("result.html", prediction=pred_label, input_data=input_dict)
 
         except Exception as e:
-            return render_template("form.html", error=str(e))
+            return render_template("form.html", error=f"Error: {str(e)}")
 
     return render_template("form.html")
 
 
+# ---------------- MAIN ---------------- #
 if __name__ == "__main__":
     app.run(debug=True)

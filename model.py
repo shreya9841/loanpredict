@@ -18,8 +18,8 @@ class DecisionTree:
         self.root = None
 
     def fit(self, X, y):
-        if isinstance(X, np.ndarray) == False: X = np.array(X)
-        if isinstance(y, np.ndarray) == False: y = np.array(y)
+        if not isinstance(X, np.ndarray): X = np.array(X)
+        if not isinstance(y, np.ndarray): y = np.array(y)
         self.n_classes = len(set(y))
         self.n_features = X.shape[1]
         if self.max_features is None:
@@ -64,6 +64,7 @@ class DecisionTree:
                 node.right = self._grow_tree(X[~mask], y[~mask], depth + 1)
         return node
 
+    # Return +1 for class=1, -1 for class=0 to use in logistic function
     def _predict_single(self, x):
         node = self.root
         while node.left:
@@ -71,10 +72,10 @@ class DecisionTree:
                 node = node.left
             else:
                 node = node.right
-        return node.predicted_class
+        return 1 if node.predicted_class == 1 else -1  # continuous representation
 
     def predict(self, X):
-        if isinstance(X, np.ndarray) == False: X = np.array(X)
+        if not isinstance(X, np.ndarray): X = np.array(X)
         return np.array([self._predict_single(row) for row in X])
 
 class RandomForest:
@@ -105,6 +106,15 @@ class RandomForest:
             tree.fit(X_sample, y_sample)
             self.trees.append(tree)
 
-    def predict(self, X):
-        predictions = np.array([tree.predict(X) for tree in self.trees])
-        return stats.mode(predictions, axis=0)[0].flatten()
+    # Return probabilities using RF formula
+    def predict_proba(self, X):
+        if not isinstance(X, np.ndarray): X = np.array(X)
+        tree_outputs = np.array([tree.predict(X) for tree in self.trees])  # shape: (n_trees, n_samples)
+        probs = 1 / (1 + np.exp(-tree_outputs))  # logistic function
+        avg_probs = np.mean(probs, axis=0)  # average over all trees
+        return avg_probs
+
+    # Convert probability to class label
+    def predict(self, X, threshold=0.5):
+        probs = self.predict_proba(X)
+        return (probs >= threshold).astype(int)
